@@ -8,6 +8,10 @@
 | `GetThatNote.swift` | The native macOS shell (AppKit + WKWebView): global hotkey, dock / pseudo-menu-bar / traditional menu-bar dropdown / nothing modes, pin on top, translucency, Apple Vision OCR, AutoPaste clipboard watcher, SQLite notes database + auto-backups, `antinote://` URL schemes, Apple Notes / Obsidian / Bear / txt / md / PDF / print export, notifications, sounds, full-screen timer alerts, iCloud-Drive sync (optionally AES-GCM encrypted). |
 | `build.sh` | Builds `GetThatNote.app` (needs Xcode command line tools). |
 
+## Download
+
+Grab `GetThatNote-x.y.z.zip` from the [Releases page](https://github.com/dhruvdabhi101/GetThatNote/releases), unzip, drag `GetThatNote.app` into Applications. First launch: System Settings › Privacy & Security › **Open Anyway** (the app is ad-hoc signed, not notarized), or `xattr -dr com.apple.quarantine /Applications/GetThatNote.app`. Universal (Apple Silicon + Intel), macOS 13+.
+
 ## Build & install
 
 ```bash
@@ -48,3 +52,9 @@ Notes: `~/Library/Application Support/GetThatNote/notes.sqlite` (+ timestamped b
 - Apple Notes export uses AppleScript directly (no Shortcut to install).
 - Six of the fourteen themes are original (the eight Antinote-named ones are approximations of the screenshots).
 - Currency rates come from the free `fawazahmed0/currency-api` (fiat + crypto), with an offline snapshot fallback.
+
+## Releasing (maintainers)
+
+1. Update `VERSION` and add a section to `CHANGELOG.md`.
+2. Commit, then `git tag vX.Y.Z && git push && git push --tags`.
+3. GitHub Actions (free on this public repo) builds the universal app on a macOS runner and publishes the zip to Releases with the changelog section as notes. `./build.sh release` does the same locally.

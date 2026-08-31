@@ -9,6 +9,7 @@ All notable changes to GetThatNote. Format follows [Keep a Changelog](https://ke
 - Window: the app no longer fills/zooms the window on its own when the top strip is double-clicked (macOS's "double-click title bar to Fill" action). The window now only changes size when you resize it; position and size are remembered.
 ### Added
 - Proper build lifecycle: `VERSION` file, git repository, `./build.sh [install|release|clean]`, version + git hash stamped into the app (About screen and Info.plist), and this changelog.
+- GitHub Actions workflow: pushing a `vX.Y.Z` tag builds the app on a free macOS runner and publishes the zip to GitHub Releases with the matching changelog section as notes.
 
 ## [2.1.0] — 2026-08-22
 ### Changed

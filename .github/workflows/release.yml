@@ -1,0 +1,25 @@
+name: Release
+on:
+  push:
+    tags: ['v*']
+permissions:
+  contents: write
+jobs:
+  build-release:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build GetThatNote.app
+        run: ./build.sh
+      - name: Package + changelog notes
+        run: |
+          VER="$(cat VERSION)"
+          ditto -c -k --keepParent GetThatNote.app "GetThatNote-$VER.zip"
+          awk -v ver="$VER" 'index($0, "## ["ver"]")==1 {f=1; next} /^## \[/ {f=0} f' CHANGELOG.md > body.md
+          printf '\n---\n**Install:** unzip → drag `GetThatNote.app` to Applications → first launch: System Settings › Privacy & Security › **Open Anyway** (the app is not notarized), or run `xattr -dr com.apple.quarantine /Applications/GetThatNote.app`. Universal binary, macOS 13+.\n' >> body.md
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: GetThatNote ${{ github.ref_name }}
+          body_path: body.md
+          files: GetThatNote-*.zip
