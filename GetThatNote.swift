@@ -370,9 +370,36 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         if dockMode == "menubar" { return }
         if dockMode == "dock" { w.level = pinned ? .floating : .normal }
         else { w.level = pinned ? .floating : .floating }
-        if pinned { w.collectionBehavior.insert(.canJoinAllSpaces) } else if dockMode == "dock" { w.collectionBehavior.remove(.canJoinAllSpaces) }
+        applyFollowSpace()
+    }
+    // "Open on your current Space & screen": the window joins every Space while open,
+    // and summoning it pulls it to the display the pointer is on.
+    func applyFollowSpace() {
+        guard let w = window else { return }
+        if bool("followSpace", true) || pinned || dockMode != "dock" { w.collectionBehavior.insert(.canJoinAllSpaces) }
+        else { w.collectionBehavior.remove(.canJoinAllSpaces) }
+    }
+    func moveToActiveScreen() {
+        guard bool("followSpace", true), dockMode != "menubar", window != nil else { return }
+        let mouse = NSEvent.mouseLocation
+        guard let target = NSScreen.screens.first(where: { NSMouseInRect(mouse, $0.frame, false) }) ?? NSScreen.main else { return }
+        if let cur = window.screen, cur == target, window.isVisible { return }
+        var f = window.frame
+        let tv = target.visibleFrame
+        if let cur = window.screen, cur != target {
+            let cv = cur.visibleFrame
+            let rx = cv.width - f.width > 0 ? (f.minX - cv.minX) / (cv.width - f.width) : 0.5
+            let ry = cv.height - f.height > 0 ? (f.minY - cv.minY) / (cv.height - f.height) : 0.5
+            f.origin.x = tv.minX + max(0, tv.width - f.width) * min(max(rx, 0), 1)
+            f.origin.y = tv.minY + max(0, tv.height - f.height) * min(max(ry, 0), 1)
+            window.setFrame(f, display: false)
+        } else if window.screen == nil {
+            f.origin.x = tv.midX - f.width / 2; f.origin.y = tv.midY - f.height / 2
+            window.setFrame(f, display: false)
+        }
     }
     func showWindow() {
+        moveToActiveScreen()
         if dockMode == "menubar" { positionDropdown() }
         window.makeKeyAndOrderFront(nil)
         if dockMode == "dock" || dockMode == "both" { NSApp.activate(ignoringOtherApps: true) } else { NSApp.activate(ignoringOtherApps: true) }
@@ -511,7 +538,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         case "saveSettings":
             if let s = m["json"] as? String { UserDefaults.standard.set(s, forKey: "settings"); if let j = jsonParse(s) as? [String: Any] { settings = j } }
         case "settings":
-            if let s = m["json"] as? String, let j = jsonParse(s) as? [String: Any] { settings = j; UserDefaults.standard.set(s, forKey: "settings"); registerHotkey(); scheduleBackups(); setupSync() }
+            if let s = m["json"] as? String, let j = jsonParse(s) as? [String: Any] { settings = j; UserDefaults.standard.set(s, forKey: "settings"); registerHotkey(); scheduleBackups(); setupSync(); applyFollowSpace() }
         case "appearance":
             applyTranslucency(on: (m["translucent"] as? Bool) ?? false, bg: (m["bg"] as? String) ?? "#f9f8f4")
         case "fetch": doFetch(id: id, m)

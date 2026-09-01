@@ -2,6 +2,10 @@
 
 All notable changes to GetThatNote. Format follows [Keep a Changelog](https://keepachangelog.com); versions follow semver.
 
+## [2.3.0] — 2026-09-01
+### Added
+- **Open on your current Space & screen** (Settings › General › Window, on by default): summoning GetThatNote brings the note window to whatever Space and display you're working on — and it stays with you when you switch Spaces while it's open — instead of macOS yanking you back to the Space where the window last lived. Turn it off to get the old single-Space behavior.
+
 ## [2.2.0] — 2026-08-22
 ### Fixed
 - Editor: typing on an empty line or at the start of a line could let WebKit restructure the note's DOM, desyncing it from the model — backspace then looked dead until you swiped to another note and back. Typing at line boundaries now goes through the model directly.
