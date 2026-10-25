@@ -49,13 +49,15 @@ button{cursor:pointer;background:none;border:0;padding:0}
 .scroll{flex:1;overflow-y:auto;overflow-x:hidden;position:relative;scroll-behavior:auto}
 .scroll::-webkit-scrollbar{width:6px}
 .scroll::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+/* Size the paper to the full note, not just the scroll viewport. */
+.sheet{position:relative;min-height:100%;display:flex;flex-direction:column}
 .paper{position:absolute;inset:0;pointer-events:none;opacity:var(--paperA)}
 .paper.lines{background-image:repeating-linear-gradient(transparent 0,transparent calc(var(--lhpx) - 1px),var(--paper) calc(var(--lhpx) - 1px),var(--paper) var(--lhpx));background-position:0 var(--padtop)}
 .paper.dots{background-image:radial-gradient(var(--paper) 1px,transparent 1.2px);background-size:18px 18px}
 .paper.sgrid{background-image:linear-gradient(var(--paper) 1px,transparent 1px),linear-gradient(90deg,var(--paper) 1px,transparent 1px);background-size:20px 20px}
 .paper.lgrid{background-image:linear-gradient(var(--paper) 1px,transparent 1px),linear-gradient(90deg,var(--paper) 1px,transparent 1px);background-size:40px 40px}
 .ed{position:relative;outline:none;white-space:pre-wrap;word-wrap:break-word;overflow-wrap:anywhere;line-height:var(--lh);
-  padding:var(--padtop,46px) var(--pad) 120px var(--pad);min-height:100%;user-select:text;-webkit-user-select:text;caret-color:var(--cursor);cursor:text;tab-size:4}
+  padding:var(--padtop,46px) var(--pad) 120px var(--pad);flex:1;min-height:0;user-select:text;-webkit-user-select:text;caret-color:var(--cursor);cursor:text;tab-size:4}
 .ed.noentry{caret-color:transparent}
 .ed.locked{opacity:.85}
 .ln{min-height:calc(var(--fs)*var(--lh));position:relative}
@@ -334,8 +336,8 @@ textarea.ta{width:100%;min-height:120px;background:var(--codebg);border:1px soli
     </div>
   </div>
   <div id="main">
-    <div class="pane" id="pane0"><div class="scroll"><div class="paper"></div><div class="ed" contenteditable="true" spellcheck="true" autocorrect="on" autocapitalize="off"></div></div><div class="tgut"><div class="tt"></div><div class="dots"></div><div class="tb"><div class="tt"></div></div></div></div>
-    <div class="pane" id="pane1" style="display:none"><div class="scroll"><div class="paper"></div><div class="ed" contenteditable="true" spellcheck="true"></div></div><div class="tgut"><div class="tt"></div><div class="dots"></div><div class="tb"><div class="tt"></div></div></div></div>
+    <div class="pane" id="pane0"><div class="scroll"><div class="sheet"><div class="paper"></div><div class="ed" contenteditable="true" spellcheck="true" autocorrect="on" autocapitalize="off"></div></div></div><div class="tgut"><div class="tt"></div><div class="dots"></div><div class="tb"><div class="tt"></div></div></div></div>
+    <div class="pane" id="pane1" style="display:none"><div class="scroll"><div class="sheet"><div class="paper"></div><div class="ed" contenteditable="true" spellcheck="true"></div></div></div><div class="tgut"><div class="tt"></div><div class="dots"></div><div class="tb"><div class="tt"></div></div></div></div>
     <div id="emptyhint"></div>
   </div>
   <div id="tfull"><div class="big">00:00</div><div class="ttl"></div><div class="sub">click to pause · double-click to stop · Esc to exit full screen</div><div class="ring"></div></div>
@@ -854,6 +856,9 @@ function spanify(text,ranges,widgets,inserts){
       continue; }
     const act=ranges.filter(r=>r.s<=p&&r.e>=q).sort((a,b)=>a.s-b.s||b.e-a.e);
     let seg=esc(text.slice(p,q)); for(const r of act) seg=`<span class="${r.cls}">${seg}</span>`; out+=seg; }
+  // A line ending in a non-editable widget still needs an editable caret stop.
+  // Without it WebKit can move typing outside the line or drop the insertion.
+  if(widgets.some(w=>w.e===text.length)) out+='<br>';
   return out||'<br>';
 }
 const widgetHTML=(cls,src,inner,extra='')=>`<span class="wid ${cls}" contenteditable="false" data-src="${esc(src)}" ${extra}>${inner}</span>`;
@@ -923,7 +928,8 @@ class Editor{
     let acc=0; const kids=this.el.children; for(let i=0;i<li&&i<kids.length;i++){ let s=this.serializeNode(kids[i]); if(kids[i].childNodes.length&&kids[i].lastChild.nodeName==='BR'&&s.endsWith('\n')) s=s.slice(0,-1); acc+=s.length+1; } return acc; }
   getSel(){ const sel=window.getSelection(); if(!sel||!sel.rangeCount||!this.el.contains(sel.anchorNode)) return null; const a=this.domPosToOffset(sel.anchorNode,sel.anchorOffset), f=this.domPosToOffset(sel.focusNode,sel.focusOffset); if(a===null||f===null) return null; return {start:Math.min(a,f),end:Math.max(a,f),anchor:a,focus:f}; }
   offsetToDom(off){ off=clamp(off,0,this.text.length); const kids=this.el.children; if(!kids.length) return {node:this.el,off:0}; const li=Math.min(this.lineAt(off),kids.length-1); let local=off-this.info.starts[li]; const ln=kids[li];
-    const walker=document.createTreeWalker(ln,NodeFilter.SHOW_ELEMENT|NodeFilter.SHOW_TEXT,{acceptNode:n=>{ if(n.nodeType===3) return NodeFilter.FILTER_ACCEPT; if(n.classList.contains('wid')||n.classList.contains('res')||n.classList.contains('ph')) return NodeFilter.FILTER_ACCEPT; return NodeFilter.FILTER_SKIP; }});
+    // Widgets are atomic model text: never map a caret into their display-only descendants.
+    const walker=document.createTreeWalker(ln,NodeFilter.SHOW_ELEMENT|NodeFilter.SHOW_TEXT,{acceptNode:n=>{ if(n.parentElement.closest('.wid,.res,.ph')) return NodeFilter.FILTER_REJECT; if(n.nodeType===3) return NodeFilter.FILTER_ACCEPT; if(n.classList.contains('wid')||n.classList.contains('res')||n.classList.contains('ph')) return NodeFilter.FILTER_ACCEPT; return NodeFilter.FILTER_SKIP; }});
     let last=null,n; while((n=walker.nextNode())){ if(n.nodeType===3){ if(local<=n.nodeValue.length) return {node:n,off:local}; local-=n.nodeValue.length; last=n; } else if(n.classList.contains('wid')){ const L=(n.getAttribute('data-src')||'').length; if(local<L||(local===0&&L===0&&false)){ const p=n.parentNode,idx=[...p.childNodes].indexOf(n); return {node:p,off:local>0?idx+1:idx}; } if(local===L&&L>0){ const p=n.parentNode,idx=[...p.childNodes].indexOf(n); // prefer following text node if exists
           const nx=walker.nextNode(); if(nx&&nx.nodeType===3) return {node:nx,off:0}; return {node:p,off:idx+1}; } local-=L; last=n; } }
     if(last&&last.nodeType===3) return {node:last,off:last.nodeValue.length}; if(last){ const p=last.parentNode; return {node:p,off:[...p.childNodes].indexOf(last)+1}; } return {node:ln,off:0}; }
