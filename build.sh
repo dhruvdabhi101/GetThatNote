@@ -2,6 +2,7 @@
 # GetThatNote build lifecycle.
 #   ./build.sh            build GetThatNote.app
 #   ./build.sh install    build + replace /Applications/GetThatNote.app + relaunch
+#   ./build.sh dmg        build + GetThatNote-<version>.dmg
 #   ./build.sh release    build + GetThatNote-<version>.zip + git commit reminder/tag
 #   ./build.sh clean      remove build products
 set -e
@@ -12,7 +13,11 @@ GITHASH="$(git rev-parse --short HEAD 2>/dev/null || echo local)"
 BUILDNUM="$(date +%Y%m%d%H%M)"
 CMD="${1:-build}"
 
-if [ "$CMD" = "clean" ]; then rm -rf build "$APP" GetThatNote-*.zip GetThatNote.zip; echo "✓ cleaned"; exit 0; fi
+case "$CMD" in
+  build|install|dmg|release|clean) ;;
+  *) echo "Usage: $0 [build|install|dmg|release|clean]" >&2; exit 1 ;;
+esac
+if [ "$CMD" = "clean" ]; then rm -rf build "$APP" GetThatNote-*.zip GetThatNote.zip GetThatNote-*.dmg; echo "✓ cleaned"; exit 0; fi
 
 rm -rf build "$APP"
 mkdir -p build "$APP/Contents/MacOS" "$APP/Contents/Resources"
@@ -53,6 +58,21 @@ echo "▸ signing (ad-hoc)"
 codesign --force --deep --sign - "$APP" 2>/dev/null || true
 rm -rf build
 echo "✓ Built $APP  (v$VER, $GITHASH)"
+
+if [ "$CMD" = "dmg" ] || [ "$CMD" = "release" ]; then
+  DMG="GetThatNote-$VER.dmg"
+  STAGING="$(mktemp -d "$PWD/.dmg-stage.XXXXXX")"
+  trap 'rm -rf "$STAGING"' EXIT
+  ditto "$APP" "$STAGING/$APP"
+  ln -s /Applications "$STAGING/Applications"
+  printf 'Drag GetThatNote.app into Applications.\n\nRequires macOS 13 or later (Apple Silicon or Intel).\nThis app is ad-hoc signed, not notarized. On first launch, macOS may require\nSystem Settings > Privacy & Security > Open Anyway.\n' > "$STAGING/Install.txt"
+  echo "▸ packaging $DMG"
+  hdiutil create -volname "GetThatNote $VER" -srcfolder "$STAGING" \
+    -format UDZO -ov "$DMG"
+  rm -rf "$STAGING"
+  trap - EXIT
+  echo "✓ $DMG ready to share"
+fi
 
 if [ "$CMD" = "install" ]; then
   pkill -x GetThatNote 2>/dev/null || true; sleep 0.5

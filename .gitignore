@@ -1,4 +1,6 @@
 GetThatNote.app/
 build/
 *.zip
+*.dmg
+.dmg-stage.*/
 .DS_Store

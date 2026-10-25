@@ -1,0 +1,10 @@
+{
+  "scope": "site/",
+  "framework": "static HTML and CSS",
+  "existingApp": "app.html uses warm paper colors and monospace editor text",
+  "siteFonts": "local Palatino display and Avenir Next body; no remote font requests",
+  "motion": "none",
+  "spacing": "4px base",
+  "preserved": ["application code", "native shell", "existing build flow"],
+  "introduced": ["standalone landing page", "paper-inspired tokens", "real editor screenshots"]
+}

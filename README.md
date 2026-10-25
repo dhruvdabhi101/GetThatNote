@@ -22,6 +22,29 @@ open /Applications/GetThatNote.app
 
 First launch: macOS asks about notifications (timers). Apple Notes export asks for Automation permission the first time. ⌥A is the global hotkey (customize in Settings > Shortcuts). If you used `dockMode` "Nothing", the only way in is the hotkey.
 
+### Build a disk image
+
+```bash
+./build.sh dmg
+```
+
+Creates `GetThatNote-<version>.dmg` in the repository root, with the universal
+app, an Applications shortcut, and installation instructions. Open the image
+and drag the app into Applications. This command does not install or launch
+the app, publish a release, or create a Git tag.
+
+The DMG is compressed and read-only. The app is still ad-hoc signed, not
+notarized; packaging it in a DMG does not remove macOS's first-launch warning.
+`./build.sh clean` removes generated DMGs as well as the app and ZIPs.
+Tag-triggered GitHub releases include both DMG and ZIP downloads.
+
+## Landing page
+
+The standalone website is in [`site/`](site/README.md). Deploy that directory
+as static files; no dependency installation or build step is needed. Download
+buttons point to the latest GitHub release. See the site's README for local
+preview and direct DMG hosting instructions.
+
 ## Using it (same as Antinote)
 
 - **Swipe** two fingers left/right to move between notes; swipe past the newest to create one; empty notes delete themselves. `⌘[` `⌘]` `⌘1` jump to front, `⌘⇧1` promote, `⌘D` delete (→ The Void), `⌘N` new, arrows enter a note after swiping.
