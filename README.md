@@ -40,7 +40,7 @@ Tag-triggered GitHub releases include both DMG and ZIP downloads.
 
 ## Landing page
 
-The standalone website is in [`site/`](site/README.md). Deploy that directory
+The standalone website is in [`docs/`](docs/README.md). Deploy that directory
 as static files; no dependency installation or build step is needed. Download
 buttons point to the latest GitHub release. See the site's README for local
 preview and direct DMG hosting instructions.

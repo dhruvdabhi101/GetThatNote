@@ -1,5 +1,5 @@
 {
-  "scope": "site/",
+  "scope": "docs/",
   "framework": "static HTML and CSS",
   "existingApp": "app.html uses warm paper colors and monospace editor text",
   "siteFonts": "local Palatino display and Avenir Next body; no remote font requests",

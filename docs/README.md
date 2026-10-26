@@ -1,6 +1,6 @@
 # Landing page
 
-Deploy **this directory** (`site/`) as the publish/output directory on any
+Deploy **this directory** (`docs/`) as the publish/output directory on any
 static host. No install command, build command, server, API key, or environment
 variables are needed. Keep `index.html`, `style.css`, and `assets/` together.
 Relative asset paths also support deployment under a subdirectory.
@@ -8,7 +8,7 @@ Relative asset paths also support deployment under a subdirectory.
 Local preview from the repository root:
 
 ```bash
-python3 -m http.server 8080 --directory site
+python3 -m http.server 8080 --directory docs
 ```
 
 Then open http://localhost:8080.

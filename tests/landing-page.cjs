@@ -13,7 +13,7 @@ const { chromium } = require('playwright');
     page.on('pageerror', error => errors.push(error.message));
     for (const width of [320, 375, 414, 768, 1280, 1920]) {
       await page.setViewportSize({ width, height: 800 });
-      await page.goto(pathToFileURL(path.resolve(__dirname, '../site/index.html')).href);
+      await page.goto(pathToFileURL(path.resolve(__dirname, '../docs/index.html')).href);
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
         `Horizontal overflow at ${width}px`);
       assert.ok(await page.locator('img').evaluateAll(images =>

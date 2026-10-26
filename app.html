@@ -94,7 +94,7 @@ a.lnk,.lnk{color:var(--link);text-decoration:underline dotted;text-underline-off
 .cb.on{background:var(--check)}
 .cb.on::after{content:"";width:.32em;height:.6em;border:solid var(--bg);border-width:0 2px 2px 0;transform:translateY(-.1em) rotate(45deg)}
 .bul{display:inline-block;width:1.4em;color:var(--muted)}
-.bul::before{content:"–"}
+.bul::before{content:"•"}
 .num{display:inline-block;min-width:1.6em;color:var(--muted)}
 .hl{background:var(--hl);color:#222;border-radius:2px}
 .hl.cur{outline:2px solid var(--accent)}
@@ -856,9 +856,9 @@ function spanify(text,ranges,widgets,inserts){
       continue; }
     const act=ranges.filter(r=>r.s<=p&&r.e>=q).sort((a,b)=>a.s-b.s||b.e-a.e);
     let seg=esc(text.slice(p,q)); for(const r of act) seg=`<span class="${r.cls}">${seg}</span>`; out+=seg; }
-  // A line ending in a non-editable widget still needs an editable caret stop.
-  // Without it WebKit can move typing outside the line or drop the insertion.
-  if(widgets.some(w=>w.e===text.length)) out+='<br>';
+  // WebKit needs editable text, not just a <br>, to paint a caret after a widget.
+  // The zero-width anchor is DOM-only and stripped by serialization.
+  if(widgets.some(w=>w.e===text.length)) out+='<span class="caret-stop">\u200b</span>';
   return out||'<br>';
 }
 const widgetHTML=(cls,src,inner,extra='')=>`<span class="wid ${cls}" contenteditable="false" data-src="${esc(src)}" ${extra}>${inner}</span>`;
@@ -917,7 +917,7 @@ class Editor{
   rerenderSoon(){ if(this._rr) return; this._rr=requestAnimationFrame(()=>{ this._rr=null; if(!this.composing){ this.render(); this.setSel(this.caret.start,this.caret.end,true);} }); }
   /* ---- DOM <-> model ---- */
   serializeNode(node){ // text length-preserving serialization
-    let out=''; const walk=(nd)=>{ if(nd.nodeType===3){ out+=nd.nodeValue; return; } if(nd.nodeType!==1) return; if(nd.classList.contains('wid')){ out+=nd.getAttribute('data-src')||''; return; } if(nd.classList.contains('res')||nd.classList.contains('ph')) return; if(nd.tagName==='BR'){ out+='\n'; return; } if(nd.classList.contains('ln')&&nd!==node){ out+='\n'; } for(const c of nd.childNodes) walk(c); };
+    let out=''; const walk=(nd)=>{ if(nd.nodeType===3){ out+=nd.parentElement?.closest('.caret-stop')?nd.nodeValue.replace(/\u200b/g,''):nd.nodeValue; return; } if(nd.nodeType!==1) return; if(nd.classList.contains('wid')){ out+=nd.getAttribute('data-src')||''; return; } if(nd.classList.contains('res')||nd.classList.contains('ph')) return; if(nd.tagName==='BR'){ out+='\n'; return; } if(nd.classList.contains('ln')&&nd!==node){ out+='\n'; } for(const c of nd.childNodes) walk(c); };
     if(node.nodeType===11){ for(const c of node.childNodes) walk(c); } else walk(node); return out; }
   readDOM(){ const parts=[]; for(const ln of this.el.children){ let s=this.serializeNode(ln); // a trailing <br> that is the only/last node is an empty-line marker
       if(ln.childNodes.length&&ln.lastChild.nodeName==='BR'&&s.endsWith('\n')) s=s.slice(0,-1); parts.push(s); } return parts.join('\n'); }
@@ -931,7 +931,7 @@ class Editor{
     // Widgets are atomic model text: never map a caret into their display-only descendants.
     const walker=document.createTreeWalker(ln,NodeFilter.SHOW_ELEMENT|NodeFilter.SHOW_TEXT,{acceptNode:n=>{ if(n.parentElement.closest('.wid,.res,.ph')) return NodeFilter.FILTER_REJECT; if(n.nodeType===3) return NodeFilter.FILTER_ACCEPT; if(n.classList.contains('wid')||n.classList.contains('res')||n.classList.contains('ph')) return NodeFilter.FILTER_ACCEPT; return NodeFilter.FILTER_SKIP; }});
     let last=null,n; while((n=walker.nextNode())){ if(n.nodeType===3){ if(local<=n.nodeValue.length) return {node:n,off:local}; local-=n.nodeValue.length; last=n; } else if(n.classList.contains('wid')){ const L=(n.getAttribute('data-src')||'').length; if(local<L||(local===0&&L===0&&false)){ const p=n.parentNode,idx=[...p.childNodes].indexOf(n); return {node:p,off:local>0?idx+1:idx}; } if(local===L&&L>0){ const p=n.parentNode,idx=[...p.childNodes].indexOf(n); // prefer following text node if exists
-          const nx=walker.nextNode(); if(nx&&nx.nodeType===3) return {node:nx,off:0}; return {node:p,off:idx+1}; } local-=L; last=n; } }
+          const nx=walker.nextNode(); if(nx&&nx.nodeType===3) return {node:nx,off:nx.parentElement.closest('.caret-stop')?1:0}; return {node:p,off:idx+1}; } local-=L; last=n; } }
     if(last&&last.nodeType===3) return {node:last,off:last.nodeValue.length}; if(last){ const p=last.parentNode; return {node:p,off:[...p.childNodes].indexOf(last)+1}; } return {node:ln,off:0}; }
   setSel(start,end,keepScroll){ end=end===undefined?start:end; this.caret={start,end}; if(this.noentry) return; const sel=window.getSelection(); const a=this.offsetToDom(start), b=start===end?a:this.offsetToDom(end); try{ const r=document.createRange(); r.setStart(a.node,a.off); r.setEnd(b.node,b.off); sel.removeAllRanges(); sel.addRange(r); }catch(e){} if(!keepScroll) this.scrollCaretIntoView(); }
   scrollCaretIntoView(){ const sel=window.getSelection(); if(!sel.rangeCount) return; const r=sel.getRangeAt(0); let rect=r.getBoundingClientRect(); if(!rect.height){ const n=r.startContainer.nodeType===1?r.startContainer:r.startContainer.parentNode; rect=n.getBoundingClientRect(); } const sc=this.scroll.getBoundingClientRect(); if(rect.bottom>sc.bottom-40) this.scroll.scrollTop+=rect.bottom-sc.bottom+60; else if(rect.top<sc.top+40) this.scroll.scrollTop-=sc.top-rect.top+60; }
